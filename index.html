@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kana table thing</title>
+    <style>
+        body {
+            background-color: #adfcff;
+            background-image: linear-gradient(to bottom,
+                    rgba(255, 255, 255, .7),
+                    #ffffff00);
+
+            background-attachment: fixed;
+        }
+
+        table {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        table,
+        td {
+            border: black solid 2px;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        td {
+            width: clamp(25px, 10vw, 65px);
+            height: 50px;
+        }
+
+        button{
+            font-weight: bold;
+            margin: 5px;
+            height: 30px;
+        }
+
+
+        label {
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 20px;
+            height: 20px;
+        }
+
+        .flex-center {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="flex-center">
+        <div style="margin:5px;">
+            
+            <!-- controls -->
+            <div class="flex-center" style="align-items: center; flex-wrap: wrap;">
+                <button onclick="toggleKana()" id="kanaToggle">Hiragana</button>
+                <button onclick="newTable()">New Table</button>
+                <button onclick="toggleVisibility()">Toggle Answers</button>
+            </div>
+
+            <!-- the table (because its special 🥰) -->
+            <div class="flex-center">
+                <table id="table"></table>
+            </div>
+
+            <!-- consonant toggles -->
+            <div class="flex-center" style="flex-flow: column;">
+                <div class="flex-center" style="flex-wrap: wrap;">
+                    <!-- i put them in seperate divs so that when they wrap they take their label with -->
+                    <div><input type="checkbox" id="a" checked="true"><label>-</label></div>
+                    <div><input type="checkbox" id="k" checked="true"><label>k</label></div>
+                    <div><input type="checkbox" id="s" checked="true"><label>s</label></div>
+                    <div><input type="checkbox" id="t" checked="true"><label>t</label></div>
+                    <div><input type="checkbox" id="n" checked="true"><label>n</label></div>
+                    <div><input type="checkbox" id="h" checked="true"><label>h</label></div>
+                    <div><input type="checkbox" id="m" checked="true"><label>m</label></div>
+                    <div><input type="checkbox" id="y" checked="true"><label>y</label></div>
+                    <div><input type="checkbox" id="r" checked="true"><label>r</label></div>
+                    <div><input type="checkbox" id="w" checked="true"><label>w</label></div>
+                </div>
+                <div class="flex-center">
+                    <button onclick="toggleConsonants(true)">all on</button>
+                    <button onclick="toggleConsonants(false)">all off</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+<script>
+    const kanaToggle = document.getElementById("kanaToggle");
+    const table = document.getElementById("table");
+    const vowels = "aiueo"
+    const consonants = "akstnhmyrw"
+
+    //make lookup tables
+    let hiraganaString = "aあいうえお|kかきくけこ|sさしすせそ|tたちつてと|nなにぬねの|hはひふへほ|mまみむめも|yや-ゆ-よ|rらりるれろ|wわゐ-ゑを";
+    hiraganaString = hiraganaString.split("|")
+    const hiragana = {}
+    for (const hiraganaChunk of hiraganaString) {
+        let consonant = hiraganaChunk[0];
+        hiragana[consonant] = {};
+        for (let i = 0; i < 5; i++) {
+            hiragana[consonant][vowels[i]] = hiraganaChunk[i + 1];
+        }
+    }
+
+    let katakanaString = "aアイウエオ|kカキクケコ|sサシスセソ|tタチツテト|nナニヌネノ|hハヒフヘホ|mマミムメモ|yヤ-ユ-ヨ|rラリルレロ|wワヰ-ヱヲ";
+    katakanaString = katakanaString.split("|");
+    const katakana = {}
+    for (const katakanaChunk of katakanaString) {
+        let consonant = katakanaChunk[0];
+        katakana[consonant] = {};
+        for (let i = 0; i < 5; i++) {
+            katakana[consonant][vowels[i]] = katakanaChunk[i + 1];
+        }
+    }
+
+    //index all the consonant checkboxes
+    const consonantStateElements = {};
+    for (const consonant of consonants) {
+        consonantStateElements[consonant] = document.getElementById(consonant);
+    }
+
+    //default to hiragana
+    let selectedKana = hiragana;
+
+    let currentAnswerElements = [];
+
+    //generate initial table
+    newTable();
+
+    function newTable() {
+        //could i make it reuse the old elements? yes
+        //will i do it? no
+        //why? this is easier
+
+        table.innerHTML = "";
+        currentAnswerElements = [];
+        const shuffledVowels = shuffle(vowels.split(""));
+        const shuffledConsonants = shuffle(consonants.split(""));
+
+        //vowels
+        const vowelRow = document.createElement("tr")
+        vowelRow.appendChild(document.createElement("td"))
+        for (let vowel of shuffledVowels) {
+            const tableData = document.createElement("td")
+            tableData.innerHTML = vowel;
+            vowelRow.appendChild(tableData);
+        }
+        table.appendChild(vowelRow)
+
+        //consonants
+        for (const consonant of shuffledConsonants) {
+            if (consonantStateElements[consonant].checked == false) continue;
+            const consonantRow = document.createElement("tr")
+            const label = document.createElement("td")
+            label.innerHTML = consonant;
+
+            //special case for no consonant, which is represented as "a" internally
+            if (consonant == "a") label.innerHTML = "-";
+
+            consonantRow.appendChild(label);
+            for (const vowel of shuffledVowels) {
+                const answer = document.createElement("td")
+
+                //for changing answers later
+                answer.setAttribute("consonant", consonant);
+                answer.setAttribute("vowel", vowel)
+
+                answer.innerHTML = selectedKana[consonant][vowel];
+                answer.style.fontSize = "0px";
+                consonantRow.appendChild(answer);
+                currentAnswerElements.push(answer);
+            }
+
+            table.appendChild(consonantRow)
+        }
+    }
+
+    function toggleKana(){
+
+        if(selectedKana.a.a == "あ"){
+            selectedKana = katakana;
+            kanaToggle.innerHTML = "Katakana"
+        } else {
+            selectedKana = hiragana;
+            kanaToggle.innerHTML = "Hiragana"
+        }
+
+        updateAnswers();
+    }
+
+    function toggleVisibility() {
+
+        //for toggling
+        const fontSize = currentAnswerElements[0].style.fontSize == "" ? "0px" : "";
+        for (const answer of currentAnswerElements) {
+            answer.style.fontSize = fontSize;
+        }
+    }
+
+    function updateAnswers() {
+        for (const answer of currentAnswerElements) {
+            const consonant = answer.getAttribute("consonant");
+            const vowel = answer.getAttribute("vowel");
+
+            answer.innerHTML = selectedKana[consonant][vowel];
+        }
+    }
+
+    function toggleConsonants(state) {
+        for (const consonant of consonants) {
+            consonantStateElements[consonant].checked = state;
+        }
+    }
+
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+
+        // While there remain elements to shuffle.
+        while (currentIndex > 0) {
+
+            // Pick a remaining element.
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+
+            // And swap it with the current element.
+            [array[currentIndex], array[randomIndex]] = [
+                array[randomIndex], array[currentIndex]];
+        }
+
+        return array;
+    }
+</script>
+
+</html>
